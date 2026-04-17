@@ -6,7 +6,7 @@ How sensitive is zero-shot classification performance of medical vision-language
 models to clinically related terminology in prompt wording?
 
 This script reuses the same core OpenCLIP/BiomedCLIP workflow used in
-assignment_2_VLM_Handin.ipynb, but organized as a standalone Python script.
+assignment_2_VLM_Handin.ipynb.
 """
 
 from __future__ import annotations
