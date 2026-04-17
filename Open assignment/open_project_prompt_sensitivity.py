@@ -29,6 +29,7 @@ try:
     from datasets import load_dataset
     from sklearn.metrics import roc_auc_score, roc_curve
     import matplotlib.pyplot as plt
+    from matplotlib.lines import Line2D
 except ImportError as exc:
     raise ImportError(
         "Missing dependency. Please install required packages used in Assignment 2: "
@@ -819,29 +820,129 @@ def plot_similarity_vs_abs_delta(rows: List[Dict[str, Any]], out_dir: Path) -> N
     if df.empty:
         return
 
-    plt.figure(figsize=(8.5, 6.5))
-    plt.scatter(
-        df["cosine_similarity_to_baseline_positive_general"],
-        df["abs_delta_auc_general"],
-        label="General",
-        alpha=0.8,
-        marker="o",
+    plt.figure(figsize=(10, 8))
+
+    # One consistent color per task (same color across both models).
+    task_order = [
+        "arch_junctional_activity",
+        "arch_pagetoid_spread",
+        "cyto_prominent_nucleoli",
+        "cyto_pigment",
+        "cyto_melanophages",
+        "ctx_inflammation",
+        "ctx_fibrosis",
+        "ctx_necrosis",
+    ]
+    color_map = {task: plt.cm.tab10(i) for i, task in enumerate(task_order)}
+    task_label_map = {
+        "arch_junctional_activity": "junctional activity",
+        "arch_pagetoid_spread": "pagetoid spread",
+        "cyto_prominent_nucleoli": "prominent nucleoli",
+        "cyto_pigment": "pigment",
+        "cyto_melanophages": "melanophages",
+        "ctx_inflammation": "inflammation",
+        "ctx_fibrosis": "fibrosis",
+        "ctx_necrosis": "necrosis",
+    }
+
+    marker_map = {"general": "o", "medical": "^"}
+
+    # Plot points task-by-task so color encodes task and marker encodes model.
+    for task_name in task_order:
+        task_df = df[df["task"] == task_name]
+        if task_df.empty:
+            continue
+
+        plt.scatter(
+            task_df["cosine_similarity_to_baseline_positive_general"],
+            task_df["abs_delta_auc_general"],
+            color=color_map[task_name],
+            marker=marker_map["general"],
+            s=70,
+            alpha=0.85,
+            edgecolor="black",
+            linewidth=0.4,
+        )
+        plt.scatter(
+            task_df["cosine_similarity_to_baseline_positive_medical"],
+            task_df["abs_delta_auc_medical"],
+            color=color_map[task_name],
+            marker=marker_map["medical"],
+            s=75,
+            alpha=0.85,
+            edgecolor="black",
+            linewidth=0.4,
+        )
+
+    plt.xlabel("Cosine similarity to baseline positive prompt", fontsize=11)
+    plt.ylabel("|ΔAUC| vs baseline", fontsize=11)
+    plt.title("Prompt semantics vs performance sensitivity", fontsize=13)
+    plt.grid(alpha=0.25, linestyle="--", linewidth=0.6)
+
+    # Separate legends: one for task colors, one for model marker shapes.
+    task_handles = [
+        Line2D(
+            [0],
+            [0],
+            marker="o",
+            linestyle="None",
+            markerfacecolor=color_map[task],
+            markeredgecolor="black",
+            markeredgewidth=0.4,
+            markersize=8,
+            label=task_label_map[task],
+        )
+        for task in task_order
+        if task in set(df["task"].tolist())
+    ]
+    model_handles = [
+        Line2D(
+            [0],
+            [0],
+            marker=marker_map["general"],
+            linestyle="None",
+            markerfacecolor="white",
+            markeredgecolor="black",
+            markeredgewidth=0.8,
+            markersize=8,
+            label="General",
+        ),
+        Line2D(
+            [0],
+            [0],
+            marker=marker_map["medical"],
+            linestyle="None",
+            markerfacecolor="white",
+            markeredgecolor="black",
+            markeredgewidth=0.8,
+            markersize=8,
+            label="Medical",
+        ),
+    ]
+
+    ax = plt.gca()
+    legend_tasks = ax.legend(
+        handles=task_handles,
+        title="Task",
+        loc="upper left",
+        bbox_to_anchor=(0.01, 0.99),
+        borderaxespad=0.0,
+        fontsize=8,
+        title_fontsize=9,
     )
-    plt.scatter(
-        df["cosine_similarity_to_baseline_positive_medical"],
-        df["abs_delta_auc_medical"],
-        label="Medical",
-        alpha=0.8,
-        marker="^",
+    ax.add_artist(legend_tasks)
+    ax.legend(
+        handles=model_handles,
+        title="Model",
+        loc="upper left",
+        bbox_to_anchor=(0.01, 0.69),
+        borderaxespad=0.0,
+        fontsize=9,
+        title_fontsize=9,
     )
-    plt.xlabel("Cosine similarity to baseline positive prompt")
-    plt.ylabel("|ΔAUC| vs baseline")
-    plt.title("Prompt semantics vs performance sensitivity")
-    plt.grid(alpha=0.3)
-    plt.legend()
-    plt.tight_layout()
+
     out_path = out_dir / "scatter_similarity_vs_abs_delta_auc.png"
-    plt.savefig(out_path, dpi=200)
+    plt.savefig(out_path, dpi=200, bbox_inches="tight")
     plt.close()
     print(f"Saved similarity-vs-|delta AUC| scatter: {out_path}")
 
